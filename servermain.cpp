@@ -159,6 +159,7 @@ int main(int argc, char *argv[])
   char command[10];
   double f1, f2, fRes;
   int i1, i2, iRes;
+  bool correct = false;
 
   while (true) //main accept loop
   {
@@ -187,19 +188,20 @@ int main(int argc, char *argv[])
     {
       printf("Child [%d] died.\n", childCount);
       close(new_fd);
-      break;
+      continue;
     }
-    std::cout<<buf;
+    std::cout << buf;
     printf("Child[%d] (%s:%d): recv(%d) .\n", childCount, s, ntohs(local_sin->sin_port), readSize);
     //if client accepts the protocols
-    if (strcmp(buf,"OK\n")==0)
+    if (strcmp(buf, "OK\n") == 0)
     {
-      cout<<"got and ok from client\n";
+      cout << "got and ok from client\n";
       //get random calculation and two random numbers
       string operation = randomType();
+      cout << "operation: " << operation << endl;
       if (operation.at(0) == 'f')
       {
-        cout<<"float"<<endl;
+        cout << "float" << endl;
         //Float
         f1 = randomFloat();
         f2 = randomFloat();
@@ -219,20 +221,38 @@ int main(int argc, char *argv[])
         {
           fRes = f1 / f2;
         }
-        
-        string msg = operation+" "+to_string(f1)+" "+to_string(f2)+"\n";
-        cout<<"sending: "<<msg;
+
+        string msg = operation + " " + to_string(f1) + " " + to_string(f2) + "\n";
+        cout << "sending: " << msg;
         if (send(new_fd, msg.c_str(), sizeof(msg), 0) == -1)
         {
           printf("Send error.\n");
           close(new_fd);
           continue;
         }
+        memset(&buf, 0, sizeof(buf));
+        readSize = recv(new_fd, &buf, MAXSZ, 0);
+        if (readSize == 0)
+        {
+          printf("Child [%d] died.\n", childCount);
+          close(new_fd);
+          continue;
+        }
+        if (abs(atof(buf) - fRes) < 0.0001)
+        {
+          //send back OK
+          correct = true;
+        }
+        else
+        {
+          //send back NOT OK
+          correct = false;
+        }
       }
       else
       {
         //int
-        cout<<"int"<<endl;
+        cout << "int" << endl;
         i1 = randomInt();
         i2 = randomInt();
         if (operation == "add")
@@ -251,17 +271,56 @@ int main(int argc, char *argv[])
         {
           iRes = i1 / i1;
         }
-        string msg = operation+" "+to_string(i1)+" "+to_string(i2)+"\n";
-        cout<<"sending: "<<msg;
+        string msg = operation + " " + to_string(i1) + " " + to_string(i2) + "\n";
+        cout << "sending: " << msg;
         if (send(new_fd, msg.c_str(), sizeof(msg), 0) == -1)
         {
           printf("Send error.\n");
           close(new_fd);
           continue;
         }
+        memset(&buf, 0, sizeof(buf));
+        readSize = recv(new_fd, &buf, MAXSZ, 0);
+        if (readSize == 0)
+        {
+          printf("Child [%d] died.\n", childCount);
+          close(new_fd);
+          continue;
+        }
+        if (strcmp(buf, to_string(iRes).c_str()) == 0)
+        {
+          //Send OK reply
+          correct = true;
+        }
+        else
+        {
+          //send NOT OK reply
+          correct = false;
+        }
       }
-      //send task
     }
+    string msg;
+    if (correct)
+    {
+      msg = "OK\n";
+      if (send(new_fd, msg.c_str(), sizeof(msg), 0) == -1)
+      {
+        printf("Send error.\n");
+        close(new_fd);
+        continue;
+      }
+    }
+    else
+    {
+      msg = "NOK OK\n";
+      if (send(new_fd, msg.c_str(), sizeof(msg), 0) == -1)
+      {
+        printf("Send error.\n");
+        close(new_fd);
+        continue;
+      }
+    }
+    continue;
   }
 
   return 0;

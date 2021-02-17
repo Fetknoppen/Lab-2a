@@ -75,11 +75,8 @@ int main(int argc, char *argv[])
 
   /* Do magic */
   int port = atoi(Destport);
-#ifdef DEBUG
-  printf("Host %s, and port %d.\n", Desthost, port);
-#endif
 
-  char *protocols = "TEXT TCP\n\n";
+  string protocols = "TEXT TCP\n\n";
 
   int sockfd, new_fd; //Litsen on sock_fd, new conection on new_fd
   struct addrinfo hints, *serverinfo, *p;
@@ -149,15 +146,12 @@ int main(int argc, char *argv[])
     printf("sigaction");
   }
 
-  printf("Waiting for connections.\n");
-
   char buf[10000];
   int MAXSZ = sizeof(buf) - 1;
 
   int childCount = 0;
   int readSize;
-  char command[10];
-  double f1, f2, fRes;
+  float f1, f2, fRes;
   int i1, i2, iRes;
   bool correct = false;
 
@@ -173,10 +167,8 @@ int main(int argc, char *argv[])
     inet_ntop(their_addr.ss_family,
               get_in_addr((struct sockaddr *)&their_addr),
               s, sizeof(s));
-    printf("server: Connection %d from %s\n", childCount, s);
 
-    struct sockaddr_in *local_sin = (struct sockaddr_in *)&their_addr;
-    if (send(new_fd, "TEXT TCP 1.0\n\n", 14, 0) == -1)
+    if (send(new_fd, protocols.c_str(), protocols.length(), 0) == -1)
     {
       printf("Send error.\n");
       close(new_fd);
@@ -190,21 +182,17 @@ int main(int argc, char *argv[])
       close(new_fd);
       continue;
     }
-    std::cout << buf;
-    printf("Child[%d] (%s:%d): recv(%d) .\n", childCount, s, ntohs(local_sin->sin_port), readSize);
     //if client accepts the protocols
     if (strcmp(buf, "OK\n") == 0)
     {
-      cout << "got and ok from client\n";
       //get random calculation and two random numbers
       string operation = randomType();
-      cout << "operation: " << operation << endl;
       if (operation.at(0) == 'f')
       {
-        cout << "float" << endl;
         //Float
         f1 = randomFloat();
         f2 = randomFloat();
+        fRes = 0;
         if (operation == "fadd")
         {
           fRes = f1 + f2;
@@ -223,7 +211,6 @@ int main(int argc, char *argv[])
         }
 
         string msg = operation + " " + to_string(f1) + " " + to_string(f2) + "\n";
-        cout << "sending: " << msg;
         if (send(new_fd, msg.c_str(), sizeof(msg), 0) == -1)
         {
           printf("Send error.\n");
@@ -240,39 +227,36 @@ int main(int argc, char *argv[])
         }
         if (abs(atof(buf) - fRes) < 0.0001)
         {
-          //send back OK
           correct = true;
         }
         else
         {
-          //send back NOT OK
           correct = false;
         }
       }
       else
       {
         //int
-        cout << "int" << endl;
         i1 = randomInt();
         i2 = randomInt();
+        iRes = 0;
         if (operation == "add")
         {
-          iRes = i1 + i1;
+          iRes = i1 + i2;
         }
         else if (operation == "fsub")
         {
-          iRes = i1 - i1;
+          iRes = i1 - i2;
         }
         else if (operation == "mul")
         {
-          iRes = i1 * i1;
+          iRes = i1 * i2;
         }
         else if (operation == "div")
         {
-          iRes = i1 / i1;
+          iRes = i1 / i2;
         }
         string msg = operation + " " + to_string(i1) + " " + to_string(i2) + "\n";
-        cout << "sending: " << msg;
         if (send(new_fd, msg.c_str(), sizeof(msg), 0) == -1)
         {
           printf("Send error.\n");
@@ -287,14 +271,12 @@ int main(int argc, char *argv[])
           close(new_fd);
           continue;
         }
-        if (strcmp(buf, to_string(iRes).c_str()) == 0)
+        if (atof(buf)==iRes)
         {
-          //Send OK reply
           correct = true;
         }
         else
         {
-          //send NOT OK reply
           correct = false;
         }
       }
@@ -312,7 +294,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-      msg = "NOK OK\n";
+      msg = "ERROR\n";
       if (send(new_fd, msg.c_str(), sizeof(msg), 0) == -1)
       {
         printf("Send error.\n");

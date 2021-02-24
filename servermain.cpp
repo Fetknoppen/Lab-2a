@@ -109,6 +109,7 @@ int main(int argc, char *argv[])
       printf("Could not make socket. Trying again.\n");
       continue;
     }
+
     //setsockoptions
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
     {
@@ -126,6 +127,15 @@ int main(int argc, char *argv[])
   }
 
   freeaddrinfo(serverinfo); //Done with thus struct
+
+  struct timeval timeout;
+  timeout.tv_sec = 5;
+  timeout.tv_usec = 0;
+
+  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
+  {
+    perror("setsockopt failed\n");
+  }
 
   if (p == NULL)
   {
@@ -161,7 +171,7 @@ int main(int argc, char *argv[])
     new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
     if (new_fd == -1)
     {
-      printf("Accept error.\n");
+      //printf("Accept error.\n");
       continue;
     }
     inet_ntop(their_addr.ss_family,
@@ -176,8 +186,9 @@ int main(int argc, char *argv[])
     }
     memset(&buf, 0, sizeof(buf));
     readSize = recv(new_fd, &buf, MAXSZ, 0);
-    if (readSize == 0)
+    if (readSize <= 0)
     {
+      send(new_fd, "ERROR TO\n", sizeof("ERROR TO\n"), 0);
       printf("Child [%d] died.\n", childCount);
       close(new_fd);
       continue;
@@ -219,8 +230,9 @@ int main(int argc, char *argv[])
         }
         memset(&buf, 0, sizeof(buf));
         readSize = recv(new_fd, &buf, MAXSZ, 0);
-        if (readSize == 0)
+        if (readSize <= 0)
         {
+          send(new_fd, "ERROR TO\n", sizeof("ERROR TO\n"), 0);
           printf("Child [%d] died.\n", childCount);
           close(new_fd);
           continue;
@@ -244,9 +256,16 @@ int main(int argc, char *argv[])
         {
           iRes = i1 + i2;
         }
-        else if (operation == "fsub")
+        else if (operation == "sub")
         {
-          iRes = i1 - i2;
+          if (i1 >= i2)
+          {
+            iRes = i1 - i2;
+          }
+          else
+          {
+            iRes = i2 - i1;
+          }
         }
         else if (operation == "mul")
         {
@@ -265,13 +284,14 @@ int main(int argc, char *argv[])
         }
         memset(&buf, 0, sizeof(buf));
         readSize = recv(new_fd, &buf, MAXSZ, 0);
-        if (readSize == 0)
+        if (readSize <= 0)
         {
+          send(new_fd, "ERROR TO\n", sizeof("ERROR TO\n"), 0);
           printf("Child [%d] died.\n", childCount);
           close(new_fd);
           continue;
         }
-        if (atof(buf)==iRes)
+        if (atof(buf) == iRes)
         {
           correct = true;
         }

@@ -220,9 +220,9 @@ int main(int argc, char *argv[])
         {
           fRes = f1 / f2;
         }
-
-        string msg = operation + " " + to_string(f1) + " " + to_string(f2) + "\n";
-        if (send(new_fd, msg.c_str(), sizeof(msg), 0) == -1)
+        string msg = "";
+        msg = operation + " " + to_string(f1) + " " + to_string(f2) + "\n";
+        if (send(new_fd, msg.c_str(), msg.length(), 0) == -1)
         {
           printf("Send error.\n");
           close(new_fd);
@@ -275,8 +275,9 @@ int main(int argc, char *argv[])
         {
           iRes = i1 / i2;
         }
-        string msg = operation + " " + to_string(i1) + " " + to_string(i2) + "\n";
-        if (send(new_fd, msg.c_str(), sizeof(msg), 0) == -1)
+        string msg;
+        msg = operation + " " + to_string(i1) + " " + to_string(i2) + "\n";
+        if (send(new_fd, msg.c_str(), msg.length(), 0) == -1)
         {
           printf("Send error.\n");
           close(new_fd);
@@ -305,25 +306,25 @@ int main(int argc, char *argv[])
     if (correct)
     {
       msg = "OK\n";
-      if (send(new_fd, msg.c_str(), sizeof(msg), 0) == -1)
+      if (send(new_fd, msg.c_str(), msg.length(), 0) == -1)
       {
         printf("Send error.\n");
-        close(new_fd);
-        continue;
       }
+      close(new_fd);
+      continue;
     }
     else
     {
       msg = "ERROR\n";
-      if (send(new_fd, msg.c_str(), sizeof(msg), 0) == -1)
+      if (send(new_fd, msg.c_str(), msg.length(), 0) == -1)
       {
         printf("Send error.\n");
-        close(new_fd);
-        continue;
       }
+      close(new_fd);
+      continue;
     }
     continue;
   }
-
+  close(sockfd);
   return 0;
 }

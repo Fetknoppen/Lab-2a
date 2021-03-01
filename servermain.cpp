@@ -16,6 +16,7 @@
 #include <signal.h>
 #include <string>
 #include <string.h>
+#include <sys/time.h>
 // Included to get the support library
 #include <calcLib.h>
 
@@ -100,7 +101,7 @@ int main(int argc, char *argv[])
   }
 
   //loop through all the results and bind to the first we can
-  for (p = serverinfo; p != NULL; p->ai_next)
+  for (p = serverinfo; p != NULL; p = p->ai_next)
   {
     //Create socket
     sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
@@ -131,11 +132,6 @@ int main(int argc, char *argv[])
   struct timeval timeout;
   timeout.tv_sec = 5;
   timeout.tv_usec = 0;
-
-  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
-  {
-    perror("setsockopt failed\n");
-  }
 
   if (p == NULL)
   {
@@ -171,9 +167,15 @@ int main(int argc, char *argv[])
     new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
     if (new_fd == -1)
     {
-      //printf("Accept error.\n");
+      printf("Accept error.\n");
+      printf("%s\n", strerror(errno));
       continue;
     }
+    if (setsockopt(new_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
+    {
+      perror("setsockopt failed\n");
+    }
+
     inet_ntop(their_addr.ss_family,
               get_in_addr((struct sockaddr *)&their_addr),
               s, sizeof(s));
@@ -188,7 +190,7 @@ int main(int argc, char *argv[])
     readSize = recv(new_fd, &buf, MAXSZ, 0);
     if (readSize <= 0)
     {
-      send(new_fd, "ERROR TO\n", sizeof("ERROR TO\n"), 0);
+      send(new_fd, "ERROR TO\n", strlen("ERROR TO\n"), 0);
       printf("Child [%d] died.\n", childCount);
       close(new_fd);
       continue;
@@ -232,7 +234,7 @@ int main(int argc, char *argv[])
         readSize = recv(new_fd, &buf, MAXSZ, 0);
         if (readSize <= 0)
         {
-          send(new_fd, "ERROR TO\n", sizeof("ERROR TO\n"), 0);
+          send(new_fd, "ERROR TO\n", strlen("ERROR TO\n"), 0);
           printf("Child [%d] died.\n", childCount);
           close(new_fd);
           continue;
@@ -287,7 +289,7 @@ int main(int argc, char *argv[])
         readSize = recv(new_fd, &buf, MAXSZ, 0);
         if (readSize <= 0)
         {
-          send(new_fd, "ERROR TO\n", sizeof("ERROR TO\n"), 0);
+          send(new_fd, "ERROR TO\n", strlen("ERROR TO\n"), 0);
           printf("Child [%d] died.\n", childCount);
           close(new_fd);
           continue;
@@ -302,10 +304,10 @@ int main(int argc, char *argv[])
         }
       }
     }
-    string msg;
+
     if (correct)
     {
-      msg = "OK\n";
+      string msg = "OK\n";
       if (send(new_fd, msg.c_str(), msg.length(), 0) == -1)
       {
         printf("Send error.\n");
@@ -315,11 +317,13 @@ int main(int argc, char *argv[])
     }
     else
     {
-      msg = "ERROR\n";
-      if (send(new_fd, msg.c_str(), msg.length(), 0) == -1)
+      //string msg = "ERROR TO\n";
+      char msg[] = "ERROR TO\n";
+      if (send(new_fd, msg, strlen(msg), 0) == -1)
       {
         printf("Send error.\n");
       }
+      fflush(stdout);
       close(new_fd);
       continue;
     }
